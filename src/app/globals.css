@@ -1,3 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+:root {
+  /* Surfaces & Backgrounds */
+  --bg-canvas: #F7F7F5;          /* 차분한 오프화이트 베이스 */
+  --bg-surface: #FFFFFF;         /* 순백색 */
+  --bg-surface-subtle: #EFEFED;  /* 옅은 보조 배경 */
+  --bg-block-solid: #111111;     /* 확정된 예약 블록의 소프트 블랙 */
+  --bg-block-subtle: #E8E8E4;    /* 기존 예약 및 보조 슬롯 */
+  --bg-nav: rgba(247, 247, 245, 0.90);
+
+  /* Typography Colors */
+  --text-primary: #111111;       /* 헤드라인, 핵심 텍스트 */
+  --text-body: #3F3F3F;          /* 본문 문장 */
+  --text-muted: #7C7C7C;         /* 시간 라벨, 메타데이터 */
+  --text-inverted: #FFFFFF;      /* 솔리드 블록 내부 텍스트 */
+
+  /* Lines & Borders (그림자 대신 1px 정밀 라인 사용) */
+  --line-hairline: rgba(17, 17, 17, 0.08);
+  --line-strong: rgba(17, 17, 17, 0.18);
+  --radius-sharp: 4px;
+  --radius-button: 6px;
+
+  /* Motion & Easing */
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-snap: 320ms;
+}
+
+[data-theme="dark"] {
+  /* Surfaces & Backgrounds (정갈하고 깊은 흑요석 다크 모드) */
+  --bg-canvas: #0D0D0C;          /* 딥 다크 캔버스 */
+  --bg-surface: #151514;         /* 세련된 다크 패널 */
+  --bg-surface-subtle: #1E1E1C;  /* 보조 다크 배경 */
+  --bg-block-solid: #EEEEEC;     /* 확정 예약 블록 (다크에서는 밝은 화이트로 도킹) */
+  --bg-block-subtle: #242422;    /* 기존 예약 슬롯 */
+  --bg-nav: rgba(13, 13, 12, 0.90);
+
+  /* Typography Colors */
+  --text-primary: #EEEEEC;       /* 헤드라인, 핵심 텍스트 */
+  --text-body: #A3A39E;          /* 본문 텍스트 */
+  --text-muted: #6E6E69;         /* 메타데이터, 타임스탬프 */
+  --text-inverted: #0D0D0C;      /* 블록 내부 텍스트 */
+
+  /* Lines & Borders */
+  --line-hairline: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
 /* ==========================================================================
    Call2Me - High-End Product Interface Stylesheet
    ========================================================================== */
@@ -9,11 +95,12 @@
   left: 0;
   width: 100%;
   height: 56px;
-  background-color: rgba(247, 247, 245, 0.92);
+  background-color: var(--bg-nav);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line-hairline);
   z-index: 1000;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .nav-container {
@@ -52,7 +139,26 @@
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
+}
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sharp);
+  color: var(--text-muted);
+  border: 1px solid var(--line-hairline);
+  background-color: var(--bg-surface);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.theme-toggle-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
 }
 
 .nav-btn-secondary {
@@ -77,7 +183,7 @@
 }
 
 .nav-btn-primary:hover {
-  background-color: #2a2a2a;
+  opacity: 0.88;
 }
 
 /* ==========================================================================
@@ -494,7 +600,7 @@
 .section-negotiation {
   padding: 8rem 0;
   border-top: 1px solid var(--line-hairline);
-  background-color: #FAFAF8;
+  background-color: var(--bg-surface-subtle);
 }
 
 .negotiation-intro {
@@ -586,8 +692,8 @@
 }
 
 .scenario-resolution-box {
-  background-color: #111111;
-  color: #ffffff;
+  background-color: var(--bg-block-solid);
+  color: var(--text-inverted);
   padding: 1.25rem;
   border-radius: var(--radius-sharp);
   display: flex;
@@ -598,13 +704,12 @@
 .resolution-title {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  opacity: 0.8;
 }
 
 .resolution-val {
   font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
 }
 
 /* ==========================================================================
@@ -694,7 +799,7 @@
 .section-owner {
   padding: 8rem 0;
   border-top: 1px solid var(--line-hairline);
-  background-color: #FAFAF8;
+  background-color: var(--bg-surface-subtle);
 }
 
 .owner-header {

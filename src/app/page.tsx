@@ -1,26 +1,49 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import './App.css';
+import { Sun, Moon } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// Navigation Component
+// 1. Navigation Component (공식 홈페이지 네비게이션: CALL2ME | 서비스 | 이용방법 | 사업자 로그인)
 // ---------------------------------------------------------------------------
 const Navbar = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const currentTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+    setTheme(currentTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    try {
+      localStorage.setItem('call2me-theme', nextTheme);
+    } catch (e) {}
+  };
+
   return (
     <header className="nav-header">
       <div className="container nav-container">
-        <a href="#" className="nav-brand">
+        <a href="/" className="nav-brand">
           CALL2ME
         </a>
         <nav className="nav-menu">
-          <a href="#workflow" className="nav-link">작동 원리</a>
-          <a href="#negotiation" className="nav-link">조건 조율</a>
-          <a href="#handoff" className="nav-link">스마트 핸드오프</a>
-          <a href="#owner" className="nav-link">원장님 캘린더</a>
+          <a href="#services" className="nav-link">서비스</a>
+          <a href="#workflow" className="nav-link">이용방법</a>
         </nav>
         <div className="nav-actions">
-          <a href="#owner" className="nav-btn-secondary">로그인</a>
-          <a href="#cta" className="nav-btn-primary">도입 문의</a>
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            aria-label="화면 모드 전환"
+            title={theme === 'light' ? '다크 모드로 전환' : '라이트 모드로 전환'}
+          >
+            {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+          </button>
+          <a href="/admin" className="nav-btn-primary">사업자 로그인</a>
         </div>
       </div>
     </header>
@@ -28,31 +51,62 @@ const Navbar = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Hero Section : Frameless Integrated Space
+// 2. Timeline Ratio Calculator (실제 예약 시간 비율 기반 계산 헬퍼)
+// ---------------------------------------------------------------------------
+const START_HOUR = 14; // 14:00 기준
+const PIXELS_PER_HOUR = 68;
+const PIXELS_PER_MINUTE = PIXELS_PER_HOUR / 60; // 1분당 ~1.133px
+
+// 120분은 60분의 정확히 2배 높이로 계산
+const calculateSlotGeometry = (startHour: number, startMinute: number, durationMinutes: number) => {
+  const elapsedMinutes = (startHour - START_HOUR) * 60 + startMinute;
+  return {
+    top: `${elapsedMinutes * PIXELS_PER_MINUTE}px`,
+    height: `${durationMinutes * PIXELS_PER_MINUTE}px`,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// 3. Hero Section : Frameless Integrated Space
 // ---------------------------------------------------------------------------
 const HeroSection = () => {
-  const [stage, setStage] = useState<number>(3); // 0: Idle, 1: Inquiry, 2: Calculate/Conflict, 3: Docked
-  const [isAutoPlay, setIsAutoPlay] = useState<boolean>(true);
+  // Stage: 0: 대기, 1: 문의 수신, 2: 조건 검토 & 16:00 불가 감지, 3: 17:30 슬롯 안착 완료
+  const [stage, setStage] = useState<number>(3);
+  const [isCompletedOnce, setIsCompletedOnce] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (!isAutoPlay) return;
+  // 1회 자연스러운 순차 재생 후 멈춤 (무한 반복 X)
+  const runDemoOnce = () => {
+    setIsCompletedOnce(false);
+    setStage(0);
 
-    const timer = setInterval(() => {
-      setStage((prev) => (prev >= 3 ? 0 : prev + 1));
-    }, 3200);
+    const t1 = setTimeout(() => setStage(1), 800);
+    const t2 = setTimeout(() => setStage(2), 2000);
+    const t3 = setTimeout(() => {
+      setStage(3);
+      setIsCompletedOnce(true);
+    }, 3400);
 
-    return () => clearInterval(timer);
-  }, [isAutoPlay]);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  };
 
   const handleStepClick = (stepIndex: number) => {
-    setIsAutoPlay(false);
+    setIsCompletedOnce(true);
     setStage(stepIndex);
   };
+
+  // 실제 시간 비율 기하구조 계산 (120분 = 60분의 2배)
+  const existingSlotStyle = calculateSlotGeometry(14, 0, 90);  // 14:00 - 15:30 (90분)
+  const conflictSlotStyle = calculateSlotGeometry(16, 0, 60);  // 16:00 (잔여 60분 슬롯)
+  const dockedSlotStyle = calculateSlotGeometry(17, 30, 120);  // 17:30 - 19:30 (120분 = 60분의 정확히 2배 높이)
 
   return (
     <section className="hero-section">
       <div className="container hero-grid">
-        {/* Hero Left : Typography & Direct Value */}
+        {/* Hero Left : Typography & Real Query */}
         <div className="hero-left">
           <h1 className="hero-headline">
             시술에 집중하는 동안,<br />
@@ -61,11 +115,11 @@ const HeroSection = () => {
           </h1>
 
           <p className="hero-description">
-            손님의 모호한 문의 속에서 필요한 시술 시간을 계산하고,
+            손님의 모호한 문의 속에서 필요한 시술 조건을 계산하고,
             매장의 비어있는 일정에 오차 없이 정리합니다.
           </p>
 
-          {/* The Real Inquiry & Condition Strip */}
+          {/* 단정한 제품 데이터 스트립 (AI 표현 없음) */}
           <div className="hero-query-box">
             <span className="hero-query-label">고객 문의 수신</span>
             <div className="hero-query-quote">
@@ -82,13 +136,13 @@ const HeroSection = () => {
                   className="hero-constraint-strip"
                 >
                   <div className="hero-constraint-row">
-                    <span className="hero-constraint-item">조건 해석</span>
-                    <span className="hero-constraint-val">타샵 제거 30분 + 젤 시술 90분 = 총 120분 필요</span>
+                    <span className="hero-constraint-item">시술 조건 검토</span>
+                    <span className="hero-constraint-val">타샵 제거 30분 + 젤 시술 90분 = 총 120분 소요</span>
                   </div>
                   <div className="hero-constraint-row">
-                    <span className="hero-constraint-item">슬롯 정렬</span>
+                    <span className="hero-constraint-item">매장 스케줄 대조</span>
                     <span className="hero-constraint-val">
-                      {stage >= 2 ? '16:00 잔여 60분 불가 → 17:30 슬롯(120분) 제안' : '스케줄 여유 시간 확인 중'}
+                      {stage >= 2 ? '16:00 잔여 60분 불가 → 17:30 슬롯(120분 확보) 대안 제안' : '빈 시간 확인 중'}
                     </span>
                   </div>
                 </motion.div>
@@ -97,7 +151,7 @@ const HeroSection = () => {
           </div>
 
           <div className="hero-cta-group">
-            <a href="#cta" className="btn-primary-lead">
+            <a href="/admin" className="btn-primary-lead">
               1:1 매장 도입 상담
             </a>
             <a href="#workflow" className="link-secondary-lead">
@@ -117,31 +171,37 @@ const HeroSection = () => {
           </div>
 
           <div className="timeline-grid">
-            {/* Hours: 14:00 - 20:00 */}
-            <div className="timeline-hour-row">
+            {/* Hours: 14:00 - 20:00 (각 1시간 = 68px 높이) */}
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">14:00</span>
             </div>
-            <div className="timeline-hour-row">
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">15:00</span>
             </div>
-            <div className="timeline-hour-row">
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">16:00</span>
             </div>
-            <div className="timeline-hour-row">
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">17:00</span>
             </div>
-            <div className="timeline-hour-row">
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">18:00</span>
             </div>
-            <div className="timeline-hour-row">
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">19:00</span>
             </div>
-            <div className="timeline-hour-row">
+            <div className="timeline-hour-row" style={{ height: `${PIXELS_PER_HOUR}px` }}>
               <span className="timeline-hour-label">20:00</span>
             </div>
 
-            {/* Existing Scheduled Slot (14:00 - 15:30) */}
-            <div className="slot-block-existing">
+            {/* 기존 예약 (14:00 - 15:30, 90분 비율) */}
+            <div
+              className="slot-block-existing"
+              style={{
+                top: existingSlotStyle.top,
+                height: existingSlotStyle.height,
+              }}
+            >
               <div>
                 <div className="slot-block-title">박서연 님</div>
                 <div className="slot-block-meta">이달의 아트 (90분)</div>
@@ -149,7 +209,7 @@ const HeroSection = () => {
               <div className="slot-block-meta">14:00 - 15:30</div>
             </div>
 
-            {/* 16:00 Conflict Indicator */}
+            {/* 16:00 충돌 표시 (요청 시간은 120분이나 잔여는 60분) */}
             <AnimatePresence>
               {stage >= 2 && (
                 <motion.div
@@ -158,14 +218,18 @@ const HeroSection = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                   className="slot-conflict-indicator"
+                  style={{
+                    top: conflictSlotStyle.top,
+                    height: conflictSlotStyle.height,
+                  }}
                 >
-                  <span className="conflict-tag">16:00 요청 슬롯</span>
-                  <span className="conflict-reason">잔여 60분 (120분 시술 불가)</span>
+                  <span className="conflict-tag">16:00 요청 시간대</span>
+                  <span className="conflict-reason">잔여 60분 (필요한 120분 충족 불가)</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* The Signature Docked Block (17:30 - 19:30) */}
+            {/* The Signature Docked Block (17:30 - 19:30, 120분 = 60분의 정확히 2배 높이) */}
             <AnimatePresence>
               {stage >= 3 && (
                 <motion.div
@@ -174,6 +238,10 @@ const HeroSection = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   className="slot-block-docked"
+                  style={{
+                    top: dockedSlotStyle.top,
+                    height: dockedSlotStyle.height,
+                  }}
                 >
                   <div className="docked-header">
                     <div>
@@ -193,33 +261,41 @@ const HeroSection = () => {
             </AnimatePresence>
           </div>
 
-          {/* Stepper Controls */}
+          {/* Stepper & Replay Control */}
           <div className="timeline-stepper">
-            <span style={{ fontSize: '0.6875rem', color: '#7c7c7c', marginRight: '0.25rem' }}>단계별 확인:</span>
             <button
-              className={`stepper-btn ${stage === 0 ? 'active' : ''}`}
-              onClick={() => handleStepClick(0)}
+              onClick={runDemoOnce}
+              className="stepper-btn"
+              style={{ fontWeight: 600, color: 'var(--text-primary)' }}
             >
-              대기
+              ↺ 다시 체험하기
             </button>
-            <button
-              className={`stepper-btn ${stage === 1 ? 'active' : ''}`}
-              onClick={() => handleStepClick(1)}
-            >
-              1. 문의 수신
-            </button>
-            <button
-              className={`stepper-btn ${stage === 2 ? 'active' : ''}`}
-              onClick={() => handleStepClick(2)}
-            >
-              2. 슬롯 계산
-            </button>
-            <button
-              className={`stepper-btn ${stage === 3 ? 'active' : ''}`}
-              onClick={() => handleStepClick(3)}
-            >
-              3. 시간 안착
-            </button>
+            <div style={{ display: 'flex', gap: '0.25rem', marginLeft: 'auto' }}>
+              <button
+                className={`stepper-btn ${stage === 0 ? 'active' : ''}`}
+                onClick={() => handleStepClick(0)}
+              >
+                대기
+              </button>
+              <button
+                className={`stepper-btn ${stage === 1 ? 'active' : ''}`}
+                onClick={() => handleStepClick(1)}
+              >
+                1. 문의
+              </button>
+              <button
+                className={`stepper-btn ${stage === 2 ? 'active' : ''}`}
+                onClick={() => handleStepClick(2)}
+              >
+                2. 검토
+              </button>
+              <button
+                className={`stepper-btn ${stage === 3 ? 'active' : ''}`}
+                onClick={() => handleStepClick(3)}
+              >
+                3. 안착
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -228,7 +304,7 @@ const HeroSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Section 2 : The Unbroken Workflow
+// 4. Section 2 : The Unbroken Workflow (이용방법)
 // ---------------------------------------------------------------------------
 const WorkflowSection = () => {
   return (
@@ -243,7 +319,6 @@ const WorkflowSection = () => {
         </div>
 
         <div className="workflow-grid">
-          {/* Column 1 : Old way */}
           <div>
             <div className="workflow-col-header">기존의 일상</div>
             <div className="workflow-item-list">
@@ -264,7 +339,6 @@ const WorkflowSection = () => {
             </div>
           </div>
 
-          {/* Column 2 : Call2Me way */}
           <div>
             <div className="workflow-col-header">Call2Me가 만드는 일상</div>
             <div className="workflow-item-list">
@@ -296,7 +370,7 @@ const WorkflowSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Section 3 : The Silent Negotiation
+// 5. Section 3 : The Silent Negotiation (서비스 상세)
 // ---------------------------------------------------------------------------
 interface ScenarioData {
   industry: string;
@@ -335,7 +409,7 @@ const NegotiationSection = () => {
   const activeScenario = SCENARIOS[selectedIdx];
 
   return (
-    <section id="negotiation" className="section-negotiation">
+    <section id="services" className="section-negotiation">
       <div className="container">
         <div className="negotiation-intro">
           <div>
@@ -352,7 +426,6 @@ const NegotiationSection = () => {
           </p>
         </div>
 
-        {/* Industry Switcher */}
         <div className="scenario-tabs">
           {SCENARIOS.map((item, idx) => (
             <button
@@ -365,7 +438,6 @@ const NegotiationSection = () => {
           ))}
         </div>
 
-        {/* Scenario Display */}
         <div className="scenario-display">
           <div className="scenario-left-box">
             <div>
@@ -376,7 +448,7 @@ const NegotiationSection = () => {
             </div>
             <div>
               <span className="scenario-step-label">조건 및 소요시간 판별</span>
-              <div style={{ fontSize: '0.875rem', color: '#3f3f3f', marginTop: '0.5rem', lineHeight: '1.6' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-body)', marginTop: '0.5rem', lineHeight: '1.6' }}>
                 {activeScenario.analysis}
               </div>
             </div>
@@ -385,7 +457,7 @@ const NegotiationSection = () => {
           <div className="scenario-right-box">
             <div>
               <span className="scenario-step-label">최적 대안 조율</span>
-              <div style={{ fontSize: '0.875rem', color: '#3f3f3f', marginTop: '0.5rem', lineHeight: '1.6' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-body)', marginTop: '0.5rem', lineHeight: '1.6' }}>
                 {activeScenario.proposal}
               </div>
             </div>
@@ -402,77 +474,74 @@ const NegotiationSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Section 4 : Smart Handoff
+// 6. Section 4 : Smart Handoff (예약 확정 직전 인계 단계)
 // ---------------------------------------------------------------------------
 const HandoffSection = () => {
   return (
-    <section id="handoff" className="section-handoff">
+    <section className="section-handoff">
       <div className="container handoff-grid">
         <div className="handoff-content">
           <div className="section-eyebrow">SMART HANDOFF</div>
           <h2 className="handoff-title">
-            원장님의 판단이 필요한 순간,<br />
-            무리하게 답하지 않습니다.
+            대화가 끝나면,<br />
+            정리된 예약서로 즉시 인계됩니다.
           </h2>
           <p className="handoff-desc">
-            손톱 손상이 심해 시술 여부 판단이 필요하거나, 복잡한 커스텀 디자인 상담처럼
-            전문가의 직접 상담이 필요한 상황에서는 이전 대화 내용을 3줄로 명확하게 요약해
-            원장님에게 안전하게 넘깁니다.
+            고객과 예약 조건이 합의되는 즉시 메뉴, 일시, 소요시간, 예상금액, 고객 정보가
+            모두 채워진 예약 확정 직전 화면으로 매끄럽게 연결됩니다.
+            단순 대화에 그치지 않고 실제 예약 결제와 원장님 캘린더 등록까지 오차 없이 완결됩니다.
           </p>
-          <div style={{ fontSize: '0.875rem', color: '#7c7c7c', borderTop: '1px solid rgba(17,17,17,0.08)', paddingTop: '1.5rem' }}>
-            시스템이 무리하게 약속하여 매장에 혼선이 생기는 일을 원천적으로 차단합니다.
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', borderTop: '1px solid var(--line-hairline)', paddingTop: '1.5rem' }}>
+            고객 대화 → 예약 조건 조율 → Smart Handoff → 결제 및 최종 확정
           </div>
         </div>
 
         <div className="handoff-card">
           <div className="handoff-card-header">
-            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111111' }}>
-              원장님 확인 요청 알림
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              예약 확정 직전 인계서
             </span>
-            <span className="handoff-badge">확인 필요 1건</span>
+            <span className="handoff-badge">조건 조율 완료</span>
           </div>
 
           <div className="handoff-summary-row">
-            <span className="handoff-summary-label">고객명</span>
-            <span className="handoff-summary-val">강하늘 님 (기존 방문 2회)</span>
+            <span className="handoff-summary-label">시술 메뉴</span>
+            <span className="handoff-summary-val">젤네일 기본 + 타샵 젤 제거</span>
           </div>
 
           <div className="handoff-summary-row">
-            <span className="handoff-summary-label">요청 내용 요약</span>
-            <span className="handoff-summary-val">
-              타샵 젤 뜯김으로 인해 손톱 바디 2개가 찢어져 연장 및 랩핑 가능 여부 문의
-            </span>
+            <span className="handoff-summary-label">예약 일시</span>
+            <span className="handoff-summary-val">10월 10일 (토) 17:30 - 19:30</span>
           </div>
 
           <div className="handoff-summary-row">
-            <span className="handoff-summary-label">희망 일시</span>
-            <span className="handoff-summary-val">목요일 18:00 (현재 슬롯 가용 상태)</span>
+            <span className="handoff-summary-label">소요 시간</span>
+            <span className="handoff-summary-val">120분 (타샵제거 30m + 시술 90m)</span>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(17,17,17,0.08)', paddingTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+          <div className="handoff-summary-row">
+            <span className="handoff-summary-label">예상 금액</span>
+            <span className="handoff-summary-val">70,000원 (예약금 20,000원)</span>
+          </div>
+
+          <div className="handoff-summary-row">
+            <span className="handoff-summary-label">고객 정보</span>
+            <span className="handoff-summary-val">이수진 님 (010-****-5821)</span>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--line-hairline)', paddingTop: '1rem' }}>
             <button
               style={{
                 fontSize: '0.8125rem',
                 fontWeight: 600,
-                color: '#ffffff',
-                backgroundColor: '#111111',
-                padding: '0.5rem 1rem',
+                color: 'var(--text-inverted)',
+                backgroundColor: 'var(--bg-block-solid)',
+                padding: '0.55rem 1.1rem',
                 borderRadius: '4px',
+                width: '100%',
               }}
             >
-              대화 확인하고 직접 답변하기
-            </button>
-            <button
-              style={{
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                color: '#555555',
-                border: '1px solid rgba(17,17,17,0.15)',
-                padding: '0.5rem 1rem',
-                borderRadius: '4px',
-              }}
-            >
-              가능 일정으로 예약 승인
+              최종 예약 확정 및 캘린더 등록
             </button>
           </div>
         </div>
@@ -482,11 +551,11 @@ const HandoffSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Section 5 : The Owner's Day (Full Schedule Timeline)
+// 7. Section 5 : The Owner's Day (Full Schedule Timeline)
 // ---------------------------------------------------------------------------
 const OwnerSection = () => {
   return (
-    <section id="owner" className="section-owner">
+    <section className="section-owner">
       <div className="container">
         <div className="owner-header">
           <div className="section-eyebrow">THE OWNER'S CONSOLE</div>
@@ -524,8 +593,8 @@ const OwnerSection = () => {
             <div className="schedule-badge">Call2Me 조율 확정</div>
           </div>
 
-          <div className="schedule-row" style={{ backgroundColor: '#F4F4F1' }}>
-            <div className="schedule-time" style={{ color: '#111111' }}>17:30 - 19:30</div>
+          <div className="schedule-row" style={{ backgroundColor: 'var(--bg-surface-subtle)' }}>
+            <div className="schedule-time" style={{ color: 'var(--text-primary)' }}>17:30 - 19:30</div>
             <div className="schedule-client-info">
               <span className="schedule-client-name">이수진 님 (방금 안착)</span>
               <span className="schedule-service">젤 시술 + 타샵 제거 (120분)</span>
@@ -539,7 +608,7 @@ const OwnerSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Section 6 : Target & Scope
+// 8. Section 6 : Target & Scope
 // ---------------------------------------------------------------------------
 const TargetSection = () => {
   return (
@@ -582,11 +651,11 @@ const TargetSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Section 7 : Final Call to Action
+// 9. Section 7 : Final Call to Action
 // ---------------------------------------------------------------------------
 const CtaSection = () => {
   return (
-    <section id="cta" className="section-cta">
+    <section className="section-cta">
       <div className="container">
         <div className="cta-content">
           <h2 className="cta-title">
@@ -598,10 +667,10 @@ const CtaSection = () => {
             복잡한 설정 없이 원장님의 매장 규정에 맞게 즉시 도입할 수 있습니다.
           </p>
           <div className="cta-actions">
-            <button className="btn-cta-primary">
-              1:1 매장 맞춤 도입 상담
-            </button>
-            <a href="#" className="link-cta-secondary">
+            <a href="/admin" className="btn-cta-primary">
+              1:1 매장 도입 상담
+            </a>
+            <a href="#services" className="link-cta-secondary">
               자주 묻는 질문 살펴보기 →
             </a>
           </div>
@@ -612,7 +681,7 @@ const CtaSection = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Footer
+// 10. Footer
 // ---------------------------------------------------------------------------
 const Footer = () => {
   return (
@@ -635,9 +704,9 @@ const Footer = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Main App Component
+// Main Page
 // ---------------------------------------------------------------------------
-export default function App() {
+export default function Home() {
   return (
     <div>
       <Navbar />
